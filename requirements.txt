@@ -1,0 +1,10 @@
+# Core
+discord.py>=2.4.0
+aiohttp>=3.9.0
+python-dotenv>=1.0.0
+psutil>=5.9.0            # host system monitoring
+
+# LangChain → Ollama (primary LLM path; llm.py falls back to raw HTTP if these
+# fail to import on your Python version, so the bot still runs)
+langchain-core>=0.3.0
+langchain-ollama>=0.2.0

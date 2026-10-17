@@ -1,0 +1,15 @@
+[Unit]
+Description=laptop-agent Discord bot (7-agent orchestrator, host shell + monitoring)
+After=network-online.target ollama.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=~/laptop-agent
+ExecStart=~/laptop-agent/.venv/bin/python ~/laptop-agent/bot.py
+Restart=on-failure
+RestartSec=5
+# keep it lightweight and alive across your absence
+
+[Install]
+WantedBy=default.target

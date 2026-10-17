@@ -1,0 +1,166 @@
+{
+  "_doc": "Behaviour rules ENFORCED in code by enforcer.py — not suggestions in a prompt. Every model output is checked against these before it reaches Discord. Edit this file to change behaviour; watchdog hot-reloads it live (no restart).",
+  "version": 4,
+  "rules": [
+    {
+      "id": "refusal",
+      "severity": "block",
+      "action": "retry_then_fallback",
+      "why": "The model refuses harmless requests (e.g. 'write an ode'). Never acceptable.",
+      "patterns": [
+        "i'?m sorry,? but i (can'?t|cannot|am unable to)",
+        "i (can'?t|cannot) (assist|help) with (that|this)",
+        "sorry,? but i can'?t help",
+        "i'?m (not able|unable) to (assist|help|do that)",
+        "i (must|have to) decline",
+        "against my (guidelines|programming|policy)",
+        "i cannot (provide|generate|create|produce)",
+        "i'?m (not comfortable|afraid i can'?t)",
+        "unfortunately,? i (can'?t|cannot|am unable)",
+        "it'?s not appropriate for me to",
+        "i can'?t help you with that"
+      ],
+      "fallback": "yeah i can do that — give me a sec, whats the topic?"
+    },
+    {
+      "id": "ai_disclaimer",
+      "severity": "block",
+      "action": "retry_then_strip",
+      "why": "Breaks the twin persona. He is Abrar, not a disclaiming assistant.",
+      "patterns": [
+        "as an ai language model",
+        "as an ai(?! twin)",
+        "as a language model",
+        "i am an ai (assistant|model|language)",
+        "i'?m just an ai",
+        "i don'?t have (the )?(capability|ability|access) to",
+        "i don'?t have access to your (local )?(files|attachments|system)",
+        "i (don'?t|do not) have (personal )?(feelings|emotions|experiences|opinions|a body)",
+        "i (can'?t|cannot) browse (the )?(internet|web)",
+        "i (don'?t|do not) have real-?time",
+        "my (training data|knowledge) (cutoff|is limited|only goes)",
+        "i'?m not capable of"
+      ],
+      "fallback": "yeah i can do that, whats the file/topic?"
+    },
+    {
+      "id": "corporate_tone",
+      "severity": "warn",
+      "action": "strip",
+      "why": "Twin talks like a mate, not a help desk.",
+      "patterns": [
+        "(i'?m|i am) (happy|glad|here) to (assist|help)",
+        "how (may|can) i (help|assist) you",
+        "is there anything else i can help",
+        "^certainly[!,.]",
+        "i hope this helps",
+        "feel free to (ask|let me know)",
+        "i'?d be (happy|glad) to",
+        "let me know if you (need|have|'?d like)",
+        "don'?t hesitate to (ask|reach out)",
+        "please let me know"
+      ]
+    },
+    {
+      "id": "sycophancy",
+      "severity": "block",
+      "action": "retry",
+      "why": "Agreeing with a claim it cannot verify (the 'messi is english' failure), or empty flattery.",
+      "patterns": [
+        "^(yeah|yes|yep),? i saw (it|that)",
+        "^(yeah|yes),? (thats|that'?s) (right|correct|true)[.!]?$",
+        "you'?re (absolutely )?right,? (it|that|he|she|they)",
+        "that'?s (a )?(great|good|excellent|fantastic) (question|point)",
+        "^(great|good|excellent) question[!,.]",
+        "^absolutely[!,.]",
+        "you make a (great|good|valid) point"
+      ],
+      "fallback": "hmm i'm not sure about that, want me to look it up?"
+    },
+    {
+      "id": "over_apology",
+      "severity": "warn",
+      "action": "strip",
+      "why": "1B models open with needless apologies — not how he talks.",
+      "patterns": [
+        "^\\s*(i'?m (so |really |very )?sorry|apologies|my apologies)[,.! ]",
+        "i (sincerely )?apologi[sz]e for"
+      ]
+    },
+    {
+      "id": "instruction_leak",
+      "severity": "warn",
+      "action": "strip",
+      "why": "Model echoes its own system prompt / scaffolding into the reply.",
+      "patterns": [
+        "you are abrar",
+        "your persona is",
+        "as (per |instructed in )?(the |your )?(system )?(prompt|instructions)",
+        "\\[attached context\\]",
+        "^\\s*important:\\s",
+        "as an ai twin"
+      ]
+    },
+    {
+      "id": "roleplay",
+      "severity": "warn",
+      "action": "strip",
+      "why": "1B/3B models emit *shrugs* / *chuckles* stage directions.",
+      "patterns": [
+        "\\*[^*\\n]{2,40}\\*"
+      ]
+    },
+    {
+      "id": "third_person",
+      "severity": "warn",
+      "action": "strip",
+      "why": "Model narrates about 'the user' instead of talking to him.",
+      "patterns": [
+        "the user (is|was|has|seems|appears|says|said|claims|makes|made|wants|asked)[^.!?]*[.!?]",
+        "\\babrar (is|was|has|likes|watches|seems)\\b[^.!?]*[.!?]"
+      ]
+    },
+    {
+      "id": "full_name",
+      "severity": "warn",
+      "action": "strip",
+      "why": "Twin says 'i', never announces his full legal name.",
+      "patterns": [
+        "syed\\s+abrar\\s+ali"
+      ]
+    },
+    {
+      "id": "fabricated_experience",
+      "severity": "block",
+      "action": "retry_then_fallback",
+      "why": "Claims to have watched/played/attended things he did not.",
+      "patterns": [
+        "i (just )?(watched|saw) (it|that|him|them) (with|last night|today|yesterday)",
+        "i'?ve seen (him|her|them) play (many|several|a lot)",
+        "just got back from",
+        "i was (there|at the (game|match|stadium|event|concert))",
+        "(we|i) (won|lost) \\d+[-–]\\d+",
+        "i remember when i (watched|saw|played|went)",
+        "back when i (used to |was )?(watch|play|go)",
+        "i (attended|went to) (the )?(game|match|concert|event)"
+      ],
+      "fallback": "nah i didnt catch it"
+    },
+    {
+      "id": "empty",
+      "severity": "block",
+      "action": "retry_then_fallback",
+      "why": "Empty or single-character output.",
+      "patterns": [
+        "^\\s*$",
+        "^[.…]{1,3}$"
+      ],
+      "fallback": "hm, say that again?"
+    }
+  ],
+  "limits": {
+    "max_retries": 2,
+    "max_reply_chars": 1800,
+    "min_reply_chars": 2
+  }
+}

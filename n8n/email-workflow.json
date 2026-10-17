@@ -1,0 +1,44 @@
+{
+  "name": "laptop-agent send-email",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "send-email",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "webhook-node",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [260, 300],
+      "webhookId": "send-email"
+    },
+    {
+      "parameters": {
+        "fromEmail": "user@example.com",
+        "toEmail": "={{ $json.body.to || 'user@example.com' }}",
+        "subject": "={{ $json.body.subject || 'laptop-agent' }}",
+        "text": "={{ $json.body.body || '' }}",
+        "options": {}
+      },
+      "id": "email-node",
+      "name": "Send Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [520, 300],
+      "credentials": {
+        "smtp": { "id": "REPLACE_WITH_YOUR_SMTP_CREDENTIAL_ID", "name": "Proton SMTP" }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": { "main": [[{ "node": "Send Email", "type": "main", "index": 0 }]] }
+  },
+  "active": true,
+  "settings": {},
+  "meta": {
+    "note": "Import in n8n. Create an SMTP credential named 'Proton SMTP' pointing at Proton Mail Bridge (host 127.0.0.1, port 1025, your bridge user/password). Then activate the workflow. Webhook path becomes /n8n/webhook/send-email through Apache."
+  }
+}

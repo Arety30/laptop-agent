@@ -1,0 +1,94 @@
+# One command brings up the whole system:  docker compose up -d --build
+#
+#   ollama  – local LLMs (reuses your host ~/.ollama, so no re-pull)
+#   n8n     – email workflow (owns the Proton SMTP creds)
+#   apache  – the HTTP gateway / reverse proxy (single front door)
+#   bot     – the Discord bot + 7-agent orchestrator
+#
+# Secrets (DISCORD_TOKEN, OWNER_ID, …) come from .env. The container-only
+# overrides (service hostnames) are set inline below.
+
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: la-ollama
+    volumes:
+      - ${HOME}/.ollama:/root/.ollama        # reuse already-pulled models
+    ports:
+      - "127.0.0.1:11434:11434"
+    restart: unless-stopped
+
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: la-n8n
+    environment:
+      - N8N_HOST=127.0.0.1
+      - N8N_PORT=5678
+      - N8N_PATH=/n8n/
+      - WEBHOOK_URL=http://apache/n8n/
+      - N8N_SECURE_COOKIE=false
+      - NODE_FUNCTION_ALLOW_BUILTIN=crypto   # token-provisioner uses crypto.randomBytes
+    volumes:
+      - n8n_data:/home/node/.n8n
+    ports:
+      - "127.0.0.1:5678:5678"
+    restart: unless-stopped
+
+  apache:
+    image: httpd:2.4
+    container_name: la-apache
+    depends_on: [bot, n8n]
+    volumes:
+      - ./apache/laptop-agent.docker.conf:/usr/local/apache2/conf/extra/laptop-agent.conf:ro
+    command: >
+      sh -c "sed -i 's/^#LoadModule proxy_module/LoadModule proxy_module/;
+                     s/^#LoadModule proxy_http_module/LoadModule proxy_http_module/;
+                     s/^#LoadModule proxy_wstunnel_module/LoadModule proxy_wstunnel_module/;
+                     s/^#LoadModule rewrite_module/LoadModule rewrite_module/'
+                 conf/httpd.conf &&
+             echo 'Include conf/extra/laptop-agent.conf' >> conf/httpd.conf &&
+             httpd-foreground"
+    ports:
+      - "127.0.0.1:80:80"
+    restart: unless-stopped
+
+  # Sandboxed Linux desktop (browser). Open http://127.0.0.1:3000 ONCE and sign
+  # into Google + Proton in its Firefox — the session persists in webtop_config.
+  # The bot drives "other tasks" here via `docker exec la-webtop …`.
+  webtop:
+    image: lscr.io/linuxserver/webtop:ubuntu-kde
+    container_name: la-webtop
+    security_opt: [seccomp:unconfined]
+    shm_size: "1gb"
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Etc/UTC
+    volumes:
+      - webtop_config:/config
+    ports:
+      - "127.0.0.1:3000:3000"
+    restart: unless-stopped
+
+  # NOTE: to run shell commands on the REAL laptop and monitor the REAL laptop,
+  # run the bot ON THE HOST (see README "Run on host"), not this container.
+  # This service is kept for a fully-containerized (VM-only shell) deployment.
+  bot:
+    build: .
+    container_name: la-bot
+    depends_on: [ollama]
+    env_file: .env
+    environment:
+      # container-network overrides (win over .env values)
+      - OLLAMA_HOST=http://ollama:11434
+      - N8N_EMAIL_WEBHOOK=http://apache/n8n/webhook/send-email
+      - BOT_HTTP_HOST=0.0.0.0
+      - BOT_HTTP_PORT=8765
+      - SANDBOX_ROOT=~
+    volumes:
+      - ${HOME}:~                  # so file edits land on the real laptop
+    restart: unless-stopped
+
+volumes:
+  n8n_data:
+  webtop_config:
